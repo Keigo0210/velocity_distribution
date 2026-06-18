@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+
+data/*
+!data/.gitkeep
+
+output/*
+!output/.gitkeep
+
+.ipynb_checkpoints/
+.vscode/
