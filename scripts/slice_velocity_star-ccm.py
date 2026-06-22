@@ -10,16 +10,20 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
-OUTPUT_DIR = ROOT / "output"
+OUTPUT_DIR = ROOT / "output" / "star_ccm"
 
-VTU_DIR = DATA_DIR / "2605201911_output"
-VELOCITY_NAME = "solution_velocity"
+CASE_FILE = DATA_DIR / "260622star-ccm" / "duct_test.case"
+TIME_POINT = 300
+VELOCITY_NAME = "Velocity"
+COORDINATE_SCALE = 1000.0
 COORDINATE_UNIT = "mm"
+VELOCITY_SCALE = 1000.0
+VELOCITY_UNIT = "mm/s"
 GEOMETRY_FILE = None
 GEOMETRY_EXTENSIONS = (".msh", ".opts", ".vtk", ".vtu", ".vtp", ".stl", ".obj", ".ply")
 FLIP_S_AXIS = False
 FLIP_T_AXIS = False
-SECTIONS_FILE = ROOT / "config" / "sections.json"
+SECTIONS_FILE = ROOT / "config" / "sections_star_ccm.json"
 
 
 def make_plane_basis(normal: np.ndarray):
@@ -449,28 +453,53 @@ resize();
 
 
 def load_latest_mesh():
-    vtu_files = sorted(VTU_DIR.glob("*.vtu"))
+    if not CASE_FILE.exists():
+        raise FileNotFoundError(f"Case file not found: {CASE_FILE}")
 
-    if not vtu_files:
-        raise FileNotFoundError(f"{VTU_DIR} に .vtu ファイルが見つかりません。")
+    print(f"Reading: {CASE_FILE}")
+    reader = pv.get_reader(CASE_FILE)
 
-    target_file = vtu_files[-1]
-    print(f"Reading: {target_file.name}")
+    n_time_points = reader.number_time_points
+    if TIME_POINT < 0 or TIME_POINT >= n_time_points:
+        raise ValueError(
+            f"TIME_POINT={TIME_POINT} is out of range. "
+            f"Available: 0 to {n_time_points - 1}"
+        )
 
-    mesh = pv.read(target_file)
+    reader.set_active_time_point(TIME_POINT)
+    active_time = reader.active_time_value
+    print(f"Time point: {TIME_POINT} / time value: {active_time}")
+
+    data = reader.read()
+    if isinstance(data, pv.MultiBlock):
+        print(f"Blocks: {data.n_blocks}")
+        mesh = data.combine(merge_points=True)
+    else:
+        mesh = data
 
     print("Mesh loaded.")
     print("Number of points:", mesh.n_points)
     print("Number of cells:", mesh.n_cells)
     print("Point data:", list(mesh.point_data.keys()))
+    print("Cell data:", list(mesh.cell_data.keys()))
 
     if VELOCITY_NAME not in mesh.point_data:
-        raise KeyError(
-            f"{VELOCITY_NAME} が point_data に見つかりません。"
-            f"Available: {list(mesh.point_data.keys())}"
-        )
+        if VELOCITY_NAME not in mesh.cell_data:
+            raise KeyError(
+                f"{VELOCITY_NAME} が point_data/cell_data に見つかりません。"
+                f"Point data: {list(mesh.point_data.keys())}, "
+                f"Cell data: {list(mesh.cell_data.keys())}"
+            )
 
-    return mesh, target_file
+        print(f"Converting cell_data '{VELOCITY_NAME}' to point_data.")
+        mesh = mesh.cell_data_to_point_data(pass_cell_data=True)
+        print("Point data after conversion:", list(mesh.point_data.keys()))
+
+    if COORDINATE_SCALE != 1.0:
+        mesh.points *= COORDINATE_SCALE
+        print(f"Scaled coordinates by {COORDINATE_SCALE:g}; coordinates are now in {COORDINATE_UNIT}.")
+
+    return mesh, CASE_FILE
 
 
 def find_geometry_file():
@@ -489,7 +518,7 @@ def find_geometry_file():
     candidates = [
         path
         for path in candidates
-        if not path.name.endswith(":Zone.Identifier") and path.parent != VTU_DIR
+        if not path.name.endswith(":Zone.Identifier")
     ]
 
     if not candidates:
@@ -499,19 +528,18 @@ def find_geometry_file():
 
 
 def load_reference_geometry(solution_mesh):
+    if GEOMETRY_FILE is None:
+        print("Using case mesh surface for overview.")
+        return solution_mesh.extract_surface(algorithm="dataset_surface"), "case mesh surface"
+
     geometry_file = find_geometry_file()
-
-    if geometry_file is None:
-        print("Geometry file not found. Using latest VTU surface for overview.")
-        return solution_mesh.extract_surface(algorithm="dataset_surface"), "latest VTU surface"
-
     print(f"Reading geometry: {geometry_file}")
     try:
         geometry = pv.read(geometry_file)
     except Exception as exc:
         print(f"Could not read geometry file: {exc}")
-        print("Using latest VTU surface for overview.")
-        return solution_mesh.extract_surface(algorithm="dataset_surface"), "latest VTU surface"
+        print("Using case mesh surface for overview.")
+        return solution_mesh.extract_surface(algorithm="dataset_surface"), "case mesh surface"
 
     return geometry.extract_surface(algorithm="dataset_surface"), geometry_file.name
 
@@ -641,7 +669,7 @@ def export_static_overview(reference_geometry, geometry_label, section, section_
         (normal, "royalblue", "normal"),
     ]
     for direction, color, label in arrows:
-        end_point = origin + direction * arrow_length
+        end = origin + direction * arrow_length
         ax.quiver(
             origin[0],
             origin[1],
@@ -655,7 +683,7 @@ def export_static_overview(reference_geometry, geometry_label, section, section_
             arrow_length_ratio=0.18,
             normalize=True,
         )
-        ax.text(end_point[0], end_point[1], end_point[2], label, color=color, weight="bold")
+        ax.text(end[0], end[1], end[2], label, color=color, weight="bold")
 
     all_points = np.vstack(
         [
@@ -700,7 +728,6 @@ def export_static_overview(reference_geometry, geometry_label, section, section_
 def export_section_overview(reference_geometry, geometry_label, section, section_name, origin, normal, width=None, height=None):
     export_static_overview(reference_geometry, geometry_label, section, section_name, origin, normal, width, height)
     export_interactive_overview(reference_geometry, section, section_name, origin, normal, width, height)
-
 
 def export_section(mesh, section_name, center, normal, width=None, height=None):
     origin = np.asarray(center, dtype=float)
@@ -749,7 +776,7 @@ def export_section(mesh, section_name, center, normal, width=None, height=None):
             )
 
     points = section.points
-    velocity = section.point_data[VELOCITY_NAME]
+    velocity = section.point_data[VELOCITY_NAME] * VELOCITY_SCALE
 
     speed = np.linalg.norm(velocity, axis=1)
     normal_velocity = velocity @ normal
@@ -780,7 +807,7 @@ def export_section(mesh, section_name, center, normal, width=None, height=None):
 
     fig, ax = plt.subplots(figsize=(7.5, 6))
     contour = ax.tricontourf(s, t, speed, levels=30)
-    fig.colorbar(contour, ax=ax, label="Velocity magnitude")
+    fig.colorbar(contour, ax=ax, label=f"Velocity magnitude ({VELOCITY_UNIT})")
     ax.set_xlabel(f"s: + direction / plot right = {format_vector(e1)}")
     ax.set_ylabel(f"t: + direction / plot up = {format_vector(e2)}")
     ax.axis("equal")
@@ -835,7 +862,7 @@ def export_section(mesh, section_name, center, normal, width=None, height=None):
 
 
 def main():
-    OUTPUT_DIR.mkdir(exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     mesh, target_file = load_latest_mesh()
     reference_geometry, geometry_label = load_reference_geometry(mesh)
@@ -843,7 +870,7 @@ def main():
     # まずはメッシュ全体の範囲を表示
     bounds = mesh.bounds
     print()
-    print("Mesh bounds:")
+    print(f"Mesh bounds ({COORDINATE_UNIT}):")
     print(f"x: {bounds[0]} to {bounds[1]}")
     print(f"y: {bounds[2]} to {bounds[3]}")
     print(f"z: {bounds[4]} to {bounds[5]}")
