@@ -10,20 +10,41 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
-OUTPUT_DIR = ROOT / "output" / "star_ccm"
+CONFIG_FILE = ROOT / "config" / "slice_velocity_star_ccm.json"
 
-CASE_FILE = DATA_DIR / "260622star-ccm" / "duct_test.case"
-TIME_POINT = 300
-VELOCITY_NAME = "Velocity"
-COORDINATE_SCALE = 1000.0
-COORDINATE_UNIT = "mm"
-VELOCITY_SCALE = 1000.0
-VELOCITY_UNIT = "mm/s"
-GEOMETRY_FILE = None
+
+def load_config(config_file):
+    if not config_file.exists():
+        raise FileNotFoundError(f"設定ファイルが見つかりません: {config_file}")
+    with config_file.open() as file:
+        return json.load(file)
+
+
+def resolve_config_path(value):
+    if value is None:
+        return None
+    path = Path(value)
+    if not path.is_absolute():
+        path = ROOT / path
+    return path
+
+
+CONFIG = load_config(CONFIG_FILE)
+OUTPUT_DIR = resolve_config_path(CONFIG.get("output_dir", "output/star_ccm"))
+
+CASE_FILE = resolve_config_path(CONFIG.get("case_file", "data/260622star-ccm_r1/duct_test.case"))
+TIME_POINT = int(CONFIG.get("time_point", 299))
+VELOCITY_NAME = CONFIG.get("velocity_name", "Velocity")
+COORDINATE_SCALE = float(CONFIG.get("coordinate_scale", 1000.0))
+COORDINATE_UNIT = CONFIG.get("coordinate_unit", "mm")
+VELOCITY_SCALE = float(CONFIG.get("velocity_scale", 1000.0))
+VELOCITY_UNIT = CONFIG.get("velocity_unit", "mm/s")
+GEOMETRY_FILE = CONFIG.get("geometry_file")
 GEOMETRY_EXTENSIONS = (".msh", ".opts", ".vtk", ".vtu", ".vtp", ".stl", ".obj", ".ply")
-FLIP_S_AXIS = False
-FLIP_T_AXIS = False
-SECTIONS_FILE = ROOT / "config" / "sections_star_ccm.json"
+FLIP_S_AXIS = bool(CONFIG.get("flip_s_axis", False))
+FLIP_T_AXIS = bool(CONFIG.get("flip_t_axis", False))
+SECTIONS_FILE = CONFIG_FILE
+PLOT_TITLE_SUFFIX = CONFIG.get("plot_title_suffix", "star-ccm+")
 
 
 def make_plane_basis(normal: np.ndarray):
@@ -51,6 +72,13 @@ def format_vector(vector):
     return "[" + ", ".join(f"{value:+.3f}" for value in vector) + "]"
 
 
+def make_speed_contour_levels(speed, n_levels=30):
+    speed_max = float(np.nanmax(speed))
+    if speed_max <= 0:
+        speed_max = np.nextafter(0.0, 1.0)
+    return np.linspace(0.0, speed_max, n_levels + 1)
+
+
 
 def format_coord_for_name(value):
     value = float(value)
@@ -76,16 +104,7 @@ def make_arrow(start, direction, length):
 
 
 def load_section_specs():
-    if not SECTIONS_FILE.exists():
-        raise FileNotFoundError(f"断面設定ファイルが見つかりません: {SECTIONS_FILE}")
-
-    with SECTIONS_FILE.open() as file:
-        config = json.load(file)
-
-    if isinstance(config, list):
-        sections = config
-    else:
-        sections = config.get("sections")
+    sections = CONFIG.get("sections")
 
     if not sections:
         raise ValueError(f"{SECTIONS_FILE} に sections が定義されていません。")
@@ -806,12 +825,13 @@ def export_section(mesh, section_name, center, normal, width=None, height=None):
     df.to_csv(csv_path, index=False)
 
     fig, ax = plt.subplots(figsize=(7.5, 6))
-    contour = ax.tricontourf(s, t, speed, levels=30)
-    fig.colorbar(contour, ax=ax, label=f"Velocity magnitude ({VELOCITY_UNIT})")
+    speed_levels = make_speed_contour_levels(speed)
+    contour = ax.tricontourf(s, t, speed, levels=speed_levels)
+    fig.colorbar(contour, ax=ax, label=f"Velocity magnitude [{VELOCITY_UNIT}]", ticks=np.linspace(0.0, speed_levels[-1], 6))
     ax.set_xlabel(f"s: + direction / plot right = {format_vector(e1)}")
     ax.set_ylabel(f"t: + direction / plot up = {format_vector(e2)}")
     ax.axis("equal")
-    ax.set_title(section_name)
+    ax.set_title(f"{section_name}\n{PLOT_TITLE_SUFFIX}")
     arrow_origin = (-0.18, -0.16)
     s_arrow_end = (-0.06, -0.16)
     t_arrow_end = (-0.18, -0.04)

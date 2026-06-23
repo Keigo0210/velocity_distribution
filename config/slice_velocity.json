@@ -1,0 +1,27 @@
+{
+  "output_dir": "output/fem_solver",
+  "vtu_file": "data/2605201911_output/solution_000299.vtu",
+  "velocity_name": "solution_velocity",
+  "coordinate_unit": "mm",
+  "geometry_file": null,
+  "flip_s_axis": false,
+  "flip_t_axis": false,
+  "sections": [
+    {
+      "center": [
+        10.0,
+        0.0,
+        15.0
+      ],
+      "normal": [
+        1.0,
+        0.0,
+        -1.0
+      ],
+      "width": 12.0,
+      "height": 10.0
+    }
+  ],
+  "velocity_unit": "mm/s",
+  "plot_title_suffix": "fem solver"
+}
