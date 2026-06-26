@@ -1,0 +1,83 @@
+{
+  "output_dir": "output/streamlines/solver_vs_star_ccm",
+  "solver": {
+    "vtu_template": "data/260625_solver/solution_{time_index:06d}.vtu",
+    "velocity_name": "solution_velocity",
+    "coordinate_scale": 1.0,
+    "velocity_scale": 1.0
+  },
+  "star_ccm": {
+    "case_file": "data/260626star-ccm/duct_test.case",
+    "velocity_name": "Velocity",
+    "coordinate_scale": 1000.0,
+    "velocity_scale": 1000.0,
+    "start": 0,
+    "stop": 299,
+    "stride": 1,
+    "display_time_index_offset": 1
+  },
+  "seed_source": {
+    "center": [
+      0.0,
+      0.0,
+      49.5
+    ],
+    "normal": [
+      0.0,
+      0.0,
+      -1.0
+    ],
+    "radius": 4.0,
+    "rings": 4,
+    "points_per_ring": 16,
+    "include_center": true
+  },
+  "streamlines": {
+    "integration_direction": "forward",
+    "initial_step_length": 0.5,
+    "min_step_length": 0.01,
+    "max_step_length": 1.0,
+    "max_steps": 4000,
+    "terminal_speed": 1e-08,
+    "max_length": 120.0,
+    "interpolator_type": "point"
+  },
+  "screenshot": {
+    "per_time": true,
+    "off_screen": true,
+    "show_geometry": true,
+    "geometry_opacity": 0.1,
+    "tube_radius": 0.16,
+    "cmap": "coolwarm",
+    "window_size": [
+      1400,
+      950
+    ],
+    "animation": {
+      "enabled": true,
+      "filename": "streamline_error_time_animation.gif",
+      "fps": 20.0,
+      "cmap": "coolwarm",
+      "loop": 0,
+      "grow": true,
+      "min_fraction": 0.02,
+      "camera_motion": {
+        "enabled": true,
+        "mode": "orbit",
+        "azimuth_total_deg": 120.0,
+        "elevation_amplitude_deg": 10.0,
+        "zoom": 1.0
+      }
+    },
+    "scalar_bar_title": "Relative velocity error [%]"
+  },
+  "time_step_seconds": 0.125,
+  "zero_speed_tolerance": 1e-09,
+  "interactive_html": {
+    "enabled": true,
+    "dir_name": "html",
+    "filename": "streamline_error_interactive.html",
+    "title": "Relative Velocity Error [%] Viewer",
+    "max_geometry_edges": 8000
+  }
+}

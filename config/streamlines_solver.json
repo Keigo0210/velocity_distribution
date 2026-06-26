@@ -1,0 +1,66 @@
+{
+  "output_dir": "output/streamlines/solver_260625_r1",
+  "input_dir": "data/260625_r1_solver",
+  "file_pattern": "solution_*.vtu",
+  "velocity_name": "solution_velocity",
+  "coordinate_scale": 1.0,
+  "velocity_scale": 1.0,
+  "coordinate_unit": "mm",
+  "velocity_unit": "mm/s",
+  "geometry_file": null,
+  "use_mesh_surface_as_geometry": true,
+  "seed_source": {
+    "center": [
+      0.0,
+      0.0,
+      49.5
+    ],
+    "normal": [
+      0.0,
+      0.0,
+      -1.0
+    ],
+    "radius": 3.5,
+    "rings": 2,
+    "points_per_ring": 8,
+    "include_center": true
+  },
+  "streamlines": {
+    "integration_direction": "forward",
+    "initial_step_length": 0.5,
+    "min_step_length": 0.01,
+    "max_step_length": 1.0,
+    "max_steps": 4000,
+    "terminal_speed": 1e-08,
+    "max_length": 120.0,
+    "interpolator_type": "point"
+  },
+  "screenshot": {
+    "enabled": true,
+    "off_screen": true,
+    "show_geometry": true,
+    "geometry_opacity": 0.1,
+    "tube_radius": 0.30,
+    "cmap": "viridis",
+    "window_size": [
+      1400,
+      950
+    ],
+    "animation": {
+      "enabled": true,
+      "filename": "solver_streamlines_time_animation.gif",
+      "fps": 20.0,
+      "cumulative": false,
+      "scalars": "speed",
+      "show_scalar_bar": true,
+      "loop": 0,
+      "grow": true,
+      "min_fraction": 0.02
+    }
+  },
+  "output_prefix": "solver_streamlines",
+  "start": 1,
+  "stop": 300,
+  "stride": 1,
+  "time_step_seconds": 0.125
+}
