@@ -29,6 +29,55 @@ from streamlines_common import (
 DEFAULT_CONFIG = ROOT / "config" / "compare_streamlines_solver_star_ccm.json"
 
 
+def error_visualization_config(config: dict) -> dict:
+    return config.get("error_visualization", {})
+
+
+def error_display_limits(config: dict) -> tuple[float, float]:
+    visual_config = error_visualization_config(config)
+    return (
+        float(visual_config.get("display_min_percent", 0.0)),
+        float(visual_config.get("display_max_percent", 10.0)),
+    )
+
+
+def add_error_display_arrays(streamlines: pv.PolyData, config: dict) -> pv.PolyData:
+    if "relative_velocity_error_percent" not in streamlines.point_data:
+        return streamlines
+    display_min, display_max = error_display_limits(config)
+    error_percent = np.asarray(streamlines.point_data["relative_velocity_error_percent"], dtype=float)
+    display = np.clip(error_percent, display_min, display_max)
+    display[~np.isfinite(error_percent)] = display_min
+    streamlines.point_data["relative_velocity_error_display_percent"] = display
+    streamlines.point_data["relative_velocity_error_over_limit"] = (error_percent > display_max).astype(np.uint8)
+    return streamlines
+
+
+
+
+def geometry_display_config(config: dict) -> dict:
+    geometry_config = {
+        "geometry_file": config.get("geometry_file"),
+        "use_mesh_surface_as_geometry": config.get("use_mesh_surface_as_geometry", True),
+    }
+    screenshot_config = dict(config.get("screenshot", {}))
+    geometry_config.update(screenshot_config)
+    return geometry_config
+
+def over_limit_points(streamlines: pv.PolyData) -> pv.PolyData:
+    if streamlines.n_points == 0 or "relative_velocity_error_over_limit" not in streamlines.point_data:
+        return pv.PolyData()
+    mask = np.asarray(streamlines.point_data["relative_velocity_error_over_limit"], dtype=bool)
+    if not mask.any():
+        return pv.PolyData()
+    points = pv.PolyData(np.asarray(streamlines.points)[mask])
+    for name, values in streamlines.point_data.items():
+        values_array = np.asarray(values)
+        if values_array.shape[0] == streamlines.n_points:
+            points.point_data[name] = values_array[mask]
+    return points
+
+
 def add_relative_velocity_error_on_solver_pathlines(
     solver_pathlines: pv.PolyData,
     solver_velocity_name: str,
@@ -65,6 +114,8 @@ def add_relative_velocity_error_on_solver_pathlines(
 
 
 def save_error_screenshot(streamlines: pv.PolyData, geometry: pv.DataSet | None, path: Path, config: dict) -> None:
+    display_min, display_max = error_display_limits(config)
+    visual_config = error_visualization_config(config)
     plotter = pv.Plotter(off_screen=bool(config.get("off_screen", True)), window_size=config.get("window_size", [1400, 950]))
     plotter.set_background(config.get("background", "white"))
     if geometry is not None and bool(config.get("show_geometry", True)):
@@ -72,10 +123,19 @@ def save_error_screenshot(streamlines: pv.PolyData, geometry: pv.DataSet | None,
 
     plotter.add_mesh(
         streamlines.tube(radius=float(config.get("tube_radius", 0.08))),
-        scalars="relative_velocity_error_percent",
+        scalars="relative_velocity_error_display_percent",
         cmap=config.get("cmap", "coolwarm"),
-        scalar_bar_args={"title": config.get("scalar_bar_title", "Relative velocity error [%]")},
+        clim=[display_min, display_max],
+        scalar_bar_args={"title": config.get("scalar_bar_title", f"Relative velocity error [%] clipped at {display_max:g}")},
     )
+    over_points = over_limit_points(streamlines)
+    if over_points.n_points and bool(visual_config.get("show_over_limit_points", True)):
+        plotter.add_mesh(
+            over_points,
+            color=visual_config.get("over_limit_color", "black"),
+            point_size=float(visual_config.get("over_limit_point_size", 7.0)),
+            render_points_as_spheres=True,
+        )
     if config.get("camera_position"):
         plotter.camera_position = config["camera_position"]
     else:
@@ -87,6 +147,7 @@ def save_error_screenshot(streamlines: pv.PolyData, geometry: pv.DataSet | None,
 def summarize_error(time_index: int, time_value: float | None, streamlines: pv.PolyData) -> dict:
     error = np.asarray(streamlines.point_data.get("relative_velocity_error_percent", []), dtype=float)
     speed_error = np.asarray(streamlines.point_data.get("speed_error", []), dtype=float)
+    over_limit = np.asarray(streamlines.point_data.get("relative_velocity_error_over_limit", []), dtype=bool)
     valid = np.isfinite(error)
     if not valid.any():
         return {
@@ -97,6 +158,7 @@ def summarize_error(time_index: int, time_value: float | None, streamlines: pv.P
             "max_relative_velocity_error_percent": np.nan,
             "p95_relative_velocity_error_percent": np.nan,
             "mean_speed_error": np.nan,
+            "over_limit_point_ratio_percent": np.nan,
         }
     return {
         "time_index": time_index,
@@ -106,6 +168,7 @@ def summarize_error(time_index: int, time_value: float | None, streamlines: pv.P
         "max_relative_velocity_error_percent": float(np.nanmax(error)),
         "p95_relative_velocity_error_percent": float(np.nanpercentile(error, 95)),
         "mean_speed_error": float(np.nanmean(speed_error)) if speed_error.size else np.nan,
+        "over_limit_point_ratio_percent": float(np.mean(over_limit) * 100.0) if over_limit.size else np.nan,
     }
 
 
@@ -125,15 +188,9 @@ def save_error_animation(
     duration_ms = max(int(1000.0 / max(fps, 1.0e-6)), 1)
     grow = bool(animation_config.get("grow", True))
     min_fraction = float(animation_config.get("min_fraction", 0.02))
-    values = []
-    for _, _, streamlines in streamlines_by_time:
-        arr = np.asarray(streamlines.point_data.get("relative_velocity_error_percent", []), dtype=float)
-        if arr.size:
-            values.append(arr[np.isfinite(arr)])
-    clim = animation_config.get("clim")
-    if clim is None and values:
-        merged = np.concatenate([arr for arr in values if arr.size])
-        clim = [float(np.nanmin(merged)), float(np.nanmax(merged))]
+    display_min, display_max = error_display_limits(config)
+    visual_config = error_visualization_config(config)
+    clim = animation_config.get("clim", [display_min, display_max])
 
     frames = []
     for frame_index, (time_index, time_value, streamlines) in enumerate(streamlines_by_time):
@@ -145,11 +202,19 @@ def save_error_animation(
             plotter.add_mesh(geometry.extract_surface(algorithm="dataset_surface"), color="lightgray", opacity=float(config.get("geometry_opacity", 0.12)))
         plotter.add_mesh(
             visible_streamlines.tube(radius=float(config.get("tube_radius", 0.08))),
-            scalars="relative_velocity_error_percent",
+            scalars="relative_velocity_error_display_percent",
             cmap=animation_config.get("cmap", config.get("cmap", "coolwarm")),
             clim=clim,
-            scalar_bar_args={"title": config.get("scalar_bar_title", "Relative velocity error [%]")},
+            scalar_bar_args={"title": config.get("scalar_bar_title", f"Relative velocity error [%] clipped at {display_max:g}")},
         )
+        over_points = over_limit_points(visible_streamlines)
+        if over_points.n_points and bool(visual_config.get("show_over_limit_points", True)):
+            plotter.add_mesh(
+                over_points,
+                color=visual_config.get("over_limit_color", "black"),
+                point_size=float(visual_config.get("over_limit_point_size", 7.0)),
+                render_points_as_spheres=True,
+            )
         title_value = f"time index: {time_index}"
         if time_value is not None:
             title_value += f" / time: {time_value:g}"
@@ -225,9 +290,12 @@ def as_points(points: np.ndarray) -> list[list[float]]:
     return [[float(coord) for coord in point] for point in np.asarray(points, dtype=float)]
 
 
-def polyline_segments_with_scalar(pathlines: pv.PolyData, scalar_name: str) -> dict:
+def polyline_segments_with_scalar(pathlines: pv.PolyData, scalar_name: str, over_limit_name: str | None = None) -> dict:
     points = np.asarray(pathlines.points, dtype=float)
     values = np.asarray(pathlines.point_data.get(scalar_name, np.zeros(pathlines.n_points)), dtype=float)
+    over_limit = None
+    if over_limit_name and over_limit_name in pathlines.point_data:
+        over_limit = np.asarray(pathlines.point_data[over_limit_name], dtype=bool)
     lines = np.asarray(pathlines.lines, dtype=np.int64)
     segments = []
     cursor = 0
@@ -238,7 +306,8 @@ def polyline_segments_with_scalar(pathlines: pv.PolyData, scalar_name: str) -> d
             scalar_pair = np.asarray([values[a], values[b]], dtype=float)
             finite = scalar_pair[np.isfinite(scalar_pair)]
             scalar_value = float(np.mean(finite)) if finite.size else 0.0
-            segments.append([a, b, scalar_value])
+            is_over_limit = bool(over_limit[a] or over_limit[b]) if over_limit is not None else False
+            segments.append([a, b, scalar_value, is_over_limit])
         cursor += n_points + 1
     return {"points": as_points(points), "segments": segments}
 
@@ -260,30 +329,33 @@ def export_interactive_error_html(
         geometry_points = as_points(surface.points)
         geometry_edges = collect_surface_edges(surface, max_edges=int(html_config.get("max_geometry_edges", 8000)))
 
+    visual_config = error_visualization_config(config)
+    display_min, display_max = error_display_limits(config)
     values = []
     frames = []
     for time_index, time_value, pathlines in streamlines_by_time:
-        frame = polyline_segments_with_scalar(pathlines, "relative_velocity_error_percent")
+        pathlines = add_error_display_arrays(pathlines, config)
+        frame = polyline_segments_with_scalar(
+            pathlines,
+            "relative_velocity_error_display_percent",
+            "relative_velocity_error_over_limit",
+        )
         frames.append({
             "timeIndex": int(time_index),
             "timeValue": None if time_value is None else float(time_value),
             "points": frame["points"],
             "segments": frame["segments"],
         })
-        if pathlines.n_points and "relative_velocity_error_percent" in pathlines.point_data:
-            arr = np.asarray(pathlines.point_data["relative_velocity_error_percent"], dtype=float)
+        if pathlines.n_points and "relative_velocity_error_display_percent" in pathlines.point_data:
+            arr = np.asarray(pathlines.point_data["relative_velocity_error_display_percent"], dtype=float)
             arr = arr[np.isfinite(arr)]
             if arr.size:
                 values.append(arr)
 
-    scalar_min = 0.0
-    scalar_max = 1.0
-    if values:
-        merged = np.concatenate(values)
-        scalar_min = float(np.nanmin(merged))
-        scalar_max = float(np.nanmax(merged))
-        if scalar_max <= scalar_min:
-            scalar_max = scalar_min + 1.0e-9
+    scalar_min = display_min
+    scalar_max = display_max
+    if scalar_max <= scalar_min:
+        scalar_max = scalar_min + 1.0e-9
 
     data = {
         "title": html_config.get("title", "Relative Velocity Error [%] Viewer"),
@@ -292,6 +364,9 @@ def export_interactive_error_html(
         "frames": frames,
         "scalarMin": scalar_min,
         "scalarMax": scalar_max,
+        "overLimitColor": visual_config.get("over_limit_html_color", visual_config.get("over_limit_color", "#111111")),
+        "overLimitWidthMultiplier": float(visual_config.get("over_limit_width_multiplier", 1.45)),
+        "overLimitLabel": visual_config.get("over_limit_label", f"> {display_max:g} %"),
     }
 
     template = """<!doctype html>
@@ -321,6 +396,7 @@ def export_interactive_error_html(
   <div class="legend"></div>
   <div class="legend-labels"><span id="minLabel"></span><span id="maxLabel"></span></div>
   <div style="margin-top:4px;font-size:12px;">Relative velocity error [%]</div>
+  <div style="margin-top:4px;font-size:12px;"><span style="display:inline-block;width:18px;height:3px;background:__OVER_LIMIT_COLOR__;vertical-align:middle;margin-right:5px;"></span><span id="overLimitLabel"></span></div>
 </div>
 <canvas id="view"></canvas>
 <script>
@@ -333,23 +409,30 @@ const timeIndexLabel = document.getElementById('timeIndexLabel');
 const frameCountLabel = document.getElementById('frameCountLabel');
 const minLabel = document.getElementById('minLabel');
 const maxLabel = document.getElementById('maxLabel');
+const overLimitLabel = document.getElementById('overLimitLabel');
 let width = 0, height = 0;
 let rotX = -0.65, rotY = 0.0, rotZ = 0.7, zoom = 1.0;
 let dragging = false, lastX = 0, lastY = 0;
 const allPoints = [];
 for (const p of data.geometryPoints) allPoints.push(p);
 for (const frame of data.frames) for (const p of frame.points) allPoints.push(p);
+const viewReferencePoints = data.geometryPoints.length ? data.geometryPoints : allPoints;
 let center = [0, 0, 0];
-if (allPoints.length) {
-  for (const p of allPoints) {
-    center[0] += p[0]; center[1] += p[1]; center[2] += p[2];
-  }
-  center = center.map(v => v / allPoints.length);
-}
 let radius = 1.0;
-for (const p of allPoints) {
-  const r = Math.hypot(p[0] - center[0], p[1] - center[1], p[2] - center[2]);
-  if (r > radius) radius = r;
+if (viewReferencePoints.length) {
+  const mins = [Infinity, Infinity, Infinity];
+  const maxs = [-Infinity, -Infinity, -Infinity];
+  for (const p of viewReferencePoints) {
+    if (!p || !p.every(Number.isFinite)) continue;
+    for (let i = 0; i < 3; i++) {
+      if (p[i] < mins[i]) mins[i] = p[i];
+      if (p[i] > maxs[i]) maxs[i] = p[i];
+    }
+  }
+  if (mins.every(Number.isFinite) && maxs.every(Number.isFinite)) {
+    center = [0, 1, 2].map(i => (mins[i] + maxs[i]) * 0.5);
+    radius = Math.max(Math.hypot(maxs[0] - mins[0], maxs[1] - mins[1], maxs[2] - mins[2]) * 0.5, 1.0);
+  }
 }
 function resize() {
   width = canvas.width = window.innerWidth * devicePixelRatio;
@@ -404,14 +487,14 @@ function drawFrame(frame) {
   for (const seg of frame.segments) {
     const a = projected[seg[0]], b = projected[seg[1]];
     if (!a || !b || !Number.isFinite(seg[2])) continue;
-    segments.push({ a, b, value: seg[2], depth: (a[2] + b[2]) * 0.5 });
+    segments.push({ a, b, value: seg[2], overLimit: Boolean(seg[3]), depth: (a[2] + b[2]) * 0.5 });
   }
   segments.sort((s1, s2) => s1.depth - s2.depth);
   for (const seg of segments) {
     const color = colorForValue(seg.value);
     if (!color) continue;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2.6 * devicePixelRatio;
+    ctx.strokeStyle = seg.overLimit ? data.overLimitColor : color;
+    ctx.lineWidth = 2.6 * (seg.overLimit ? data.overLimitWidthMultiplier : 1.0) * devicePixelRatio;
     ctx.beginPath(); ctx.moveTo(seg.a[0], seg.a[1]); ctx.lineTo(seg.b[0], seg.b[1]); ctx.stroke();
   }
 }
@@ -467,6 +550,7 @@ canvas.addEventListener('wheel', event => {
 }, { passive: false });
 minLabel.textContent = data.scalarMin.toFixed(2) + ' %';
 maxLabel.textContent = data.scalarMax.toFixed(2) + ' %';
+overLimitLabel.textContent = data.overLimitLabel;
 resize();
 </script>
 </body>
@@ -479,6 +563,7 @@ resize();
         .replace("__MAX_FRAME__", str(max(len(frames) - 1, 0)))
         .replace("__MIN_TIME_INDEX__", str(min_time_index))
         .replace("__MAX_TIME_INDEX__", str(max_time_index))
+        .replace("__OVER_LIMIT_COLOR__", data["overLimitColor"])
     )
     html_dir = output_dir / html_config.get("dir_name", "html")
     html_dir.mkdir(parents=True, exist_ok=True)
@@ -552,6 +637,7 @@ def main() -> None:
         error_streamlines = add_relative_velocity_error_on_solver_pathlines(
             solver_pathlines, solver_velocity_name, solver_mesh, star_mesh, star_velocity_name, zero_speed_tolerance
         )
+        error_streamlines = add_error_display_arrays(error_streamlines, config)
         error_streamlines.field_data["time_index"] = np.asarray([label], dtype=np.int32)
         error_streamlines.save(vtp_dir / f"streamline_error_{label:06d}.vtp")
         combined[f"error_{label:06d}"] = error_streamlines
@@ -559,12 +645,17 @@ def main() -> None:
         error_streamlines_by_time.append((label, time_value, error_streamlines))
 
         if config.get("screenshot", {}).get("per_time", True):
-            geometry = load_geometry_from_config(config.get("screenshot", {}), first_mesh)
-            save_error_screenshot(error_streamlines, geometry, png_dir / f"streamline_error_{label:06d}.png", config.get("screenshot", {}))
+            geometry_config = geometry_display_config(config)
+            geometry = load_geometry_from_config(geometry_config, first_mesh)
+            screenshot_config_for_frame = dict(config.get("screenshot", {}))
+            screenshot_config_for_frame["error_visualization"] = config.get("error_visualization", {})
+            save_error_screenshot(error_streamlines, geometry, png_dir / f"streamline_error_{label:06d}.png", screenshot_config_for_frame)
 
-    screenshot_config = config.get("screenshot", {})
+    screenshot_config = dict(config.get("screenshot", {}))
+    screenshot_config["error_visualization"] = config.get("error_visualization", {})
+    geometry_config = geometry_display_config(config)
     if screenshot_config.get("animation", {}).get("enabled", False):
-        geometry = load_geometry_from_config(screenshot_config, first_mesh)
+        geometry = load_geometry_from_config(geometry_config, first_mesh)
         save_error_animation(
             error_streamlines_by_time,
             geometry,
@@ -572,7 +663,7 @@ def main() -> None:
             screenshot_config,
         )
 
-    geometry = load_geometry_from_config(screenshot_config, first_mesh)
+    geometry = load_geometry_from_config(geometry_config, first_mesh)
     export_interactive_error_html(error_streamlines_by_time, geometry, output_dir, config)
 
     combined.save(output_dir / "streamline_error_all_times.vtm")

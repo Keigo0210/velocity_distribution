@@ -1,6 +1,6 @@
 {
-  "output_dir": "output/streamlines/solver_260625_r1",
-  "input_dir": "data/260625_r1_solver",
+  "output_dir": "output/streamlines/fem_solver/solver_260629",
+  "input_dir": "data/260629_solver",
   "file_pattern": "solution_*.vtu",
   "velocity_name": "solution_velocity",
   "coordinate_scale": 1.0,

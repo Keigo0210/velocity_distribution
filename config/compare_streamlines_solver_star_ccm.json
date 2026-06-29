@@ -1,13 +1,13 @@
 {
-  "output_dir": "output/streamlines/solver_vs_star_ccm",
+  "output_dir": "output/streamlines/solver_vs_star_ccm/solver_vs_star_ccm_Re=100",
   "solver": {
-    "vtu_template": "data/260625_solver/solution_{time_index:06d}.vtu",
+    "vtu_template": "data/260629_solver/solution_{time_index:06d}.vtu",
     "velocity_name": "solution_velocity",
     "coordinate_scale": 1.0,
     "velocity_scale": 1.0
   },
   "star_ccm": {
-    "case_file": "data/260626star-ccm/duct_test.case",
+    "case_file": "data/260629star-ccm/duct_test.case",
     "velocity_name": "Velocity",
     "coordinate_scale": 1000.0,
     "velocity_scale": 1000.0,
@@ -69,7 +69,7 @@
         "zoom": 1.0
       }
     },
-    "scalar_bar_title": "Relative velocity error [%]"
+    "scalar_bar_title": "Relative velocity error [%] clipped at 10"
   },
   "time_step_seconds": 0.125,
   "zero_speed_tolerance": 1e-09,
@@ -79,5 +79,17 @@
     "filename": "streamline_error_interactive.html",
     "title": "Relative Velocity Error [%] Viewer",
     "max_geometry_edges": 8000
-  }
+  },
+  "error_visualization": {
+    "display_min_percent": 0.0,
+    "display_max_percent": 10.0,
+    "show_over_limit_points": true,
+    "over_limit_color": "black",
+    "over_limit_html_color": "#111111",
+    "over_limit_point_size": 7.0,
+    "over_limit_width_multiplier": 1.45,
+    "over_limit_label": "> 10 %"
+  },
+  "geometry_file": "data/mesh/branch_duct.msh",
+  "use_mesh_surface_as_geometry": false
 }

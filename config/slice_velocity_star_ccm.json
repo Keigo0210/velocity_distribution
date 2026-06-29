@@ -1,6 +1,6 @@
 {
-  "output_dir": "output/star_ccm/260626",
-  "case_file": "data/260626star-ccm/duct_test.case",
+  "output_dir": "output/star_ccm/260629",
+  "case_file": "data/260629star-ccm/duct_test.case",
   "time_point": 299,
   "velocity_name": "Velocity",
   "coordinate_scale": 1000.0,

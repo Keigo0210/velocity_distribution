@@ -1,6 +1,6 @@
 {
-  "output_dir": "output/fem_solver/260625_r1",
-  "vtu_file": "data/260625_r1_solver/solution_000299.vtu",
+  "output_dir": "output/fem_solver/260629",
+  "vtu_file": "data/260629_solver/solution_000299.vtu",
   "velocity_name": "solution_velocity",
   "coordinate_unit": "mm",
   "geometry_file": null,
@@ -9,14 +9,14 @@
   "sections": [
     {
       "center": [
+        10.0,
         0.0,
-        0.0,
-        49.5
+        15.0
       ],
       "normal": [
+        1.0,
         0.0,
-        0.0,
-        1.0
+        -1.0
       ],
       "width": 12.0,
       "height": 10.0
