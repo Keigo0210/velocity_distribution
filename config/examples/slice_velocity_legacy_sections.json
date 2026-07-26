@@ -6,11 +6,22 @@
   "geometry_file": null,
   "flip_s_axis": false,
   "flip_t_axis": false,
+  "sections": [
+    {
+      "center": [
+        10.0,
+        0.0,
+        15.0
+      ],
+      "normal": [
+        1.0,
+        0.0,
+        -1.0
+      ],
+      "width": 12.0,
+      "height": 10.0
+    }
+  ],
   "velocity_unit": "mm/s",
-  "plot_title_suffix": "fem solver",
-  "section_library": "sections.json",
-  "section_set": "default_three_sections",
-  "execution": {
-    "fail_fast": true
-  }
+  "plot_title_suffix": "fem solver"
 }

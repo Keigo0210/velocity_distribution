@@ -1,0 +1,36 @@
+{
+  "section_library": "sections.json",
+  "section_set": "default_three_sections",
+  "cases": {
+    "re100": {
+      "label": "Re = 100",
+      "fem_star_metrics": "../output/relative_error_colormap/solver_vs_star_ccm_Re100_v2/summary_metrics.csv",
+      "fem_case_metrics": "../output/fem_case_comparison_v2/comparison_metrics.csv",
+      "steady_state_metrics": "../output/steady_state/configured_re100/steady_state_summary.csv",
+      "flow_metrics": "../output/section_flow/re100/flow_summary.csv",
+      "steady_source": "baseline",
+      "flow_sources": {
+        "fem": "fem_37_5s",
+        "star": "star_37_5s"
+      }
+    }
+  },
+  "report": {
+    "output_directory": "../output/progress_report/re100_configured",
+    "title": "Velocity comparison progress report",
+    "include_sections": [
+      "straight_z10",
+      "upstream_z30",
+      "side_branch"
+    ],
+    "flow_partition_mode": "absolute",
+    "steady_thresholds_percent": [
+      0.5,
+      0.1
+    ],
+    "dpi": 180
+  },
+  "execution": {
+    "fail_on_missing_required_input": true
+  }
+}

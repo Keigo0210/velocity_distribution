@@ -1,0 +1,53 @@
+{
+  "data_sources": {
+    "star_re100": {
+      "label": "STAR Re=100 37.5 s",
+      "type": "star_ensight",
+      "path": "../data/260629star-ccm/duct_test.case",
+      "time_index": 299,
+      "time": 37.5,
+      "volume_part_name": "領域",
+      "velocity_array": "Velocity",
+      "data_association": "cell",
+      "length_scale_to_mm": 1000.0,
+      "velocity_scale_to_mm_s": 1000.0
+    }
+  },
+  "section_library": "sections.json",
+  "section_names": [
+    "upstream_z30",
+    "straight_z10",
+    "side_branch"
+  ],
+  "integration": {
+    "method": "native_volume_cell_intersection",
+    "clip_to_section_window": true,
+    "minimum_polygon_area_mm2": 1.0e-12,
+    "validate_original_cell_ids": true,
+    "fail_on_unmapped_polygon": true
+  },
+  "comparison": {
+    "existing_internal_flow_summary": "../output/section_flow/re100/flow_summary.csv",
+    "existing_internal_source_name": "star_37_5s",
+    "boundary_flow_summary": "../output/boundary_flow_audit/re100_v2/boundary_flow_summary.csv",
+    "boundary_source_name": "star_re100",
+    "section_to_boundary": {
+      "upstream_z30": "inlet",
+      "straight_z10": "straight_outlet",
+      "side_branch": "side_outlet"
+    },
+    "native_boundary_close_percent": 1.0
+  },
+  "execution": {
+    "fail_fast": true,
+    "refuse_nonempty_output_directory": true
+  },
+  "output": {
+    "directory": "../output/native_volume_cell_sections/star_re100",
+    "save_polygon_details": true,
+    "polygon_details_format": "csv.gz",
+    "save_vtp": true,
+    "save_summary_csv": true,
+    "save_comparison_csv": true
+  }
+}

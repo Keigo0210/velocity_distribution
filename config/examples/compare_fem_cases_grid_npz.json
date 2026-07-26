@@ -1,0 +1,73 @@
+{
+  "data_sources": {
+    "baseline": {
+      "label": "Baseline",
+      "path": "data/260629_solver/solution_000120.vtu",
+      "dt": 0.125,
+      "time": 15.0,
+      "velocity_array": "solution_velocity",
+      "data_association": "point",
+      "length_unit": "mm",
+      "velocity_unit": "mm/s",
+      "length_scale_to_mm": 1.0,
+      "velocity_scale_to_mm_s": 1.0
+    },
+    "case_a": {
+      "label": "Case A",
+      "path": "data/branch_duct_re100_dt003125/solution_000480.vtu",
+      "dt": 0.03125,
+      "time": 15.0,
+      "velocity_array": "solution_velocity",
+      "data_association": "point",
+      "length_unit": "mm",
+      "velocity_unit": "mm/s",
+      "length_scale_to_mm": 1.0,
+      "velocity_scale_to_mm_s": 1.0
+    },
+    "case_b": {
+      "label": "Case B",
+      "path": "data/branch_duct_re100_dt00125_vtu20/solution_001200.vtu",
+      "dt": 0.0125,
+      "time": 15.0,
+      "velocity_array": "solution_velocity",
+      "data_association": "point",
+      "length_unit": "mm",
+      "velocity_unit": "mm/s",
+      "length_scale_to_mm": 1.0,
+      "velocity_scale_to_mm_s": 1.0
+    }
+  },
+  "comparisons": [
+    {
+      "name": "caseA_vs_caseB",
+      "source_1": "case_a",
+      "source_2": "case_b",
+      "reference": "case_b"
+    }
+  ],
+  "interpolation": {
+    "method": "linear_tri",
+    "duplicate_point_tolerance": 1e-08,
+    "minimum_common_valid_fraction": 0.5
+  },
+  "metrics": {
+    "epsilon": 1e-12,
+    "u95_percentile": 95.0,
+    "compute_vector_components": true
+  },
+  "output": {
+    "directory": "output/grid_format_checks/npz",
+    "save_metrics_csv": true,
+    "save_png": false,
+    "save_vtp": false,
+    "dpi": 200,
+    "grid_output_format": "npz"
+  },
+  "section_library": "sections.json",
+  "execution": {
+    "fail_fast": true
+  },
+  "section_names": [
+    "side_branch"
+  ]
+}

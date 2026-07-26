@@ -1,0 +1,75 @@
+{
+  "section_library": "sections.json",
+  "section_set": "default_three_sections",
+  "data_sources": {
+    "baseline_15s": {
+      "label": "Baseline 15 s",
+      "type": "vtu",
+      "path": "data/260629_solver/solution_000120.vtu",
+      "time": 15.0,
+      "velocity_array": "solution_velocity",
+      "data_association": "point",
+      "length_scale_to_mm": 1.0,
+      "velocity_scale_to_mm_s": 1.0
+    },
+    "case_a_15s": {
+      "label": "Case A 15 s",
+      "type": "vtu",
+      "path": "data/branch_duct_re100_dt003125/solution_000480.vtu",
+      "time": 15.0,
+      "velocity_array": "solution_velocity",
+      "data_association": "point",
+      "length_scale_to_mm": 1.0,
+      "velocity_scale_to_mm_s": 1.0
+    },
+    "case_b_15s": {
+      "label": "Case B 15 s",
+      "type": "vtu",
+      "path": "data/branch_duct_re100_dt00125_vtu20/solution_001200.vtu",
+      "time": 15.0,
+      "velocity_array": "solution_velocity",
+      "data_association": "point",
+      "length_scale_to_mm": 1.0,
+      "velocity_scale_to_mm_s": 1.0
+    },
+    "fem_37_5s": {
+      "label": "FEM 37.5 s",
+      "type": "vtu",
+      "path": "data/260629_solver/solution_000300.vtu",
+      "time": 37.5,
+      "velocity_array": "solution_velocity",
+      "data_association": "point",
+      "length_scale_to_mm": 1.0,
+      "velocity_scale_to_mm_s": 1.0
+    },
+    "star_37_5s": {
+      "label": "STAR-CCM+ 37.5 s",
+      "type": "ensight",
+      "path": "data/260629star-ccm/duct_test.case",
+      "time_point": 299,
+      "time": 37.5,
+      "velocity_array": "Velocity",
+      "data_association": "cell",
+      "length_scale_to_mm": 1000.0,
+      "velocity_scale_to_mm_s": 1000.0
+    }
+  },
+  "flow_balance": {
+    "inlets": [
+      "upstream_z30"
+    ],
+    "outlets": [
+      "straight_z10",
+      "side_branch"
+    ],
+    "partition_mode": "absolute",
+    "orientation_factors": {
+      "straight_z10": 1.0,
+      "upstream_z30": 1.0,
+      "side_branch": 1.0
+    }
+  },
+  "output": {
+    "directory": "output/section_flow/re100"
+  }
+}

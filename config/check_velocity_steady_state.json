@@ -1,0 +1,58 @@
+{
+  "data_sources": {
+    "baseline": {
+      "label": "Baseline",
+      "directory": "data/260629_solver",
+      "file_pattern": "solution_*.vtu",
+      "dt": 0.125,
+      "velocity_array": "solution_velocity",
+      "data_association": "point",
+      "length_scale_to_mm": 1.0,
+      "velocity_scale_to_mm_s": 1.0
+    },
+    "case_a": {
+      "label": "Case A",
+      "directory": "data/branch_duct_re100_dt003125",
+      "file_pattern": "solution_*.vtu",
+      "dt": 0.03125,
+      "velocity_array": "solution_velocity",
+      "data_association": "point",
+      "length_scale_to_mm": 1.0,
+      "velocity_scale_to_mm_s": 1.0
+    },
+    "case_b": {
+      "label": "Case B",
+      "directory": "data/branch_duct_re100_dt00125_vtu20",
+      "file_pattern": "solution_*.vtu",
+      "dt": 0.0125,
+      "velocity_array": "solution_velocity",
+      "data_association": "point",
+      "length_scale_to_mm": 1.0,
+      "velocity_scale_to_mm_s": 1.0
+    }
+  },
+  "section_library": "sections.json",
+  "section_set": "default_three_sections",
+  "evaluation_regions": {
+    "whole_domain": true,
+    "sections": true
+  },
+  "steady_state": {
+    "comparison_interval_seconds": 1.0,
+    "relative_l2_thresholds": [
+      0.005,
+      0.001
+    ],
+    "continuous_until_end": true,
+    "epsilon": 1e-12
+  },
+  "execution": {
+    "fail_fast": true
+  },
+  "output": {
+    "directory": "output/steady_state/configured_re100",
+    "save_csv": true,
+    "save_png": true,
+    "dpi": 200
+  }
+}

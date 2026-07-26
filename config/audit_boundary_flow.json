@@ -1,0 +1,243 @@
+{
+  "data_sources": {
+    "fem_re100": {
+      "label": "FEM Re=100 at 37.5 s",
+      "type": "fem_vtu",
+      "path": "data/260629_solver/solution_000300.vtu",
+      "time": 37.5,
+      "velocity_array": "solution_velocity",
+      "data_association": "point",
+      "length_unit": "mm",
+      "velocity_unit": "mm/s",
+      "length_scale_to_mm": 1.0,
+      "velocity_scale_to_mm_s": 1.0,
+      "boundary_mesh_path": "data/mesh/branch_duct.msh",
+      "boundary_id_array": "gmsh:physical",
+      "point_mapping_tolerance_mm": 1e-09
+    },
+    "star_re100": {
+      "label": "STAR-CCM+ Re=100 at 37.5 s",
+      "type": "star_ensight",
+      "path": "data/260629star-ccm/duct_test.case",
+      "time_point": 299,
+      "time": 37.5,
+      "velocity_array": "Velocity",
+      "data_association": "cell",
+      "length_unit": "m",
+      "velocity_unit": "m/s",
+      "length_scale_to_mm": 1000.0,
+      "velocity_scale_to_mm_s": 1000.0
+    }
+  },
+  "boundaries": {
+    "fem_re100": {
+      "inlet": {
+        "role": "inlet",
+        "selection_method": "boundary_id",
+        "boundary_id": 10,
+        "normal_mode": "configured_outward",
+        "normal": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "selection_evidence": "Physical Surface 10 named inlet in data/mesh/branch_duct.msh; z=50 cap; volume cell counts/types match the result VTU and selected surface points map exactly to result points."
+      },
+      "straight_outlet": {
+        "role": "outlet",
+        "selection_method": "boundary_id",
+        "boundary_id": 20,
+        "normal_mode": "configured_outward",
+        "normal": [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "selection_evidence": "Physical Surface 20 named outlet_main in data/mesh/branch_duct.msh; z=0 straight cap; exact result-point coordinate mapping."
+      },
+      "side_outlet": {
+        "role": "outlet",
+        "selection_method": "boundary_id",
+        "boundary_id": 30,
+        "normal_mode": "configured_outward",
+        "normal": [
+          1.0,
+          0.0,
+          -1.0
+        ],
+        "selection_evidence": "Physical Surface 30 named outlet_branch in data/mesh/branch_duct.msh; oblique side cap; exact result-point coordinate mapping."
+      }
+    },
+    "star_re100": {
+      "inlet": {
+        "role": "inlet",
+        "selection_method": "part_name",
+        "part_name": "branch_duct_test.inlet1",
+        "normal_mode": "configured_outward",
+        "normal": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "selection_evidence": "Native Ensight surface part named branch_duct_test.inlet1; planar z=0.05 m cap."
+      },
+      "straight_outlet": {
+        "role": "outlet",
+        "selection_method": "part_name",
+        "part_name": "branch_duct_test.outlet1",
+        "normal_mode": "configured_outward",
+        "normal": [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "selection_evidence": "Native Ensight surface part named branch_duct_test.outlet1; planar z=0 m straight cap."
+      },
+      "side_outlet": {
+        "role": "outlet",
+        "selection_method": "part_name",
+        "part_name": "branch_duct_test.outlet2",
+        "normal_mode": "configured_outward",
+        "normal": [
+          1.0,
+          0.0,
+          -1.0
+        ],
+        "selection_evidence": "Native Ensight surface part named branch_duct_test.outlet2; oblique side cap from part bounds."
+      }
+    }
+  },
+  "internal_sections": {
+    "summary_csv": "output/section_flow/re100/flow_summary.csv",
+    "source_mapping": {
+      "fem_re100": "fem_37_5s",
+      "star_re100": "star_37_5s"
+    },
+    "boundary_mapping": {
+      "inlet": "upstream_z30",
+      "straight_outlet": "straight_z10",
+      "side_outlet": "side_branch"
+    }
+  },
+  "solver_comparison": {
+    "source_1": "fem_re100",
+    "source_2": "star_re100"
+  },
+  "decision_thresholds": {
+    "flow_match_percent": 1.0,
+    "cell_to_point_attention_percent": 1.0
+  },
+  "boundary_condition_audit": [
+    {
+      "item": "density",
+      "FEM": "確認不能",
+      "STAR": "確認不能",
+      "matched": "確認不能",
+      "evidence_file": "なし",
+      "evidence_location": "入力設定未収録",
+      "note": "元の物性設定が必要"
+    },
+    {
+      "item": "dynamic viscosity",
+      "FEM": "確認不能",
+      "STAR": "確認不能",
+      "matched": "確認不能",
+      "evidence_file": "なし",
+      "evidence_location": "入力設定未収録",
+      "note": "元の物性設定が必要"
+    },
+    {
+      "item": "time step",
+      "FEM": "0.125 s",
+      "STAR": "0.125 s",
+      "matched": "yes",
+      "evidence_file": "data/260629_solver/result.txt; data/260629star-ccm/duct_test.case",
+      "evidence_location": "Time step 300; TIME/time values",
+      "note": "37.5 s同士を比較"
+    },
+    {
+      "item": "inlet boundary identity",
+      "FEM": "Physical Surface 10 inlet",
+      "STAR": "surface part branch_duct_test.inlet1",
+      "matched": "geometrically corresponding",
+      "evidence_file": "data/mesh/branch_duct.msh; Ensight part inventory",
+      "evidence_location": "PhysicalNames; part bounds z=50 mm",
+      "note": "面積は監査出力で比較"
+    },
+    {
+      "item": "straight outlet identity",
+      "FEM": "Physical Surface 20 outlet_main",
+      "STAR": "surface part branch_duct_test.outlet1",
+      "matched": "geometrically corresponding",
+      "evidence_file": "data/mesh/branch_duct.msh; Ensight part inventory",
+      "evidence_location": "PhysicalNames; part bounds z=0 mm",
+      "note": ""
+    },
+    {
+      "item": "side outlet identity",
+      "FEM": "Physical Surface 30 outlet_branch",
+      "STAR": "surface part branch_duct_test.outlet2",
+      "matched": "geometrically corresponding",
+      "evidence_file": "data/mesh/branch_duct.msh; Ensight part inventory",
+      "evidence_location": "PhysicalNames; oblique part bounds",
+      "note": ""
+    },
+    {
+      "item": "inlet velocity data",
+      "FEM": "point solution_velocity on boundary",
+      "STAR": "native cell Velocity on inlet part",
+      "matched": "representation differs",
+      "evidence_file": "solution_000300.vtu; duct_test00299.Velocity",
+      "evidence_location": "boundary arrays",
+      "note": "実際の積分値をboundary_flow_summary.csvで比較"
+    },
+    {
+      "item": "prescribed inlet profile",
+      "FEM": "確認不能",
+      "STAR": "確認不能",
+      "matched": "確認不能",
+      "evidence_file": "なし",
+      "evidence_location": "solver/STAR input absent",
+      "note": "固定値、一様profile、壁edge処理の直接設定が必要"
+    },
+    {
+      "item": "outlet pressure/flow condition",
+      "FEM": "確認不能",
+      "STAR": "確認不能",
+      "matched": "確認不能",
+      "evidence_file": "なし",
+      "evidence_location": "solver/STAR input absent",
+      "note": "2出口それぞれの設定が必要"
+    },
+    {
+      "item": "wall condition",
+      "FEM": "Physical Surface 40 wall; condition value unavailable",
+      "STAR": "surface part branch_duct_test.wall; condition value unavailable",
+      "matched": "確認不能",
+      "evidence_file": "data/mesh/branch_duct.msh; Ensight part inventory",
+      "evidence_location": "names only",
+      "note": "no-slip等の設定は確認不能"
+    },
+    {
+      "item": "length/velocity units",
+      "FEM": "mm, mm/s",
+      "STAR": "m, m/s; audit scales by 1000",
+      "matched": "after configured conversion",
+      "evidence_file": "config/audit_boundary_flow.json",
+      "evidence_location": "data_sources scales",
+      "note": "STAR geometry bounds confirm metre-scale export"
+    },
+    {
+      "item": "pressure field export",
+      "FEM": "solution_pressure.0 point data",
+      "STAR": "not present in current Ensight export",
+      "matched": "no",
+      "evidence_file": "solution_000300.vtu; duct_test.case",
+      "evidence_location": "array inventory; VARIABLE section",
+      "note": "境界圧力条件の監査にはSTAR圧力exportまたは設定報告が必要"
+    }
+  ],
+  "output": {
+    "directory": "output/boundary_flow_audit/re100_v2"
+  }
+}

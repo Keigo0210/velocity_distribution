@@ -1,0 +1,75 @@
+{
+  "boundary_audit_config": "audit_boundary_flow.json",
+  "section_library": "sections.json",
+  "solvers": {
+    "fem": {
+      "source_name": "fem_re100"
+    },
+    "star": {
+      "source_name": "star_re100",
+      "volume_part_name": "領域"
+    }
+  },
+  "locations": {
+    "inlet": {
+      "label": "Inlet boundary",
+      "type": "boundary",
+      "boundary_name": "inlet",
+      "section": {
+        "label": "Inlet boundary",
+        "center": [0.0, 0.0, 50.0],
+        "normal": [0.0, 0.0, 1.0],
+        "width": 12.0,
+        "height": 10.0,
+        "grid_resolution": [501, 401],
+        "flip_s": false,
+        "flip_t": false
+      },
+      "flow_direction_normal": [0.0, 0.0, -1.0]
+    },
+    "upstream_z30": {
+      "label": "Upstream z = 30 mm",
+      "type": "internal_section",
+      "section_name": "upstream_z30",
+      "flow_direction_normal": [0.0, 0.0, -1.0]
+    }
+  },
+  "profile": {
+    "low_velocity_fraction_of_mean": 0.1,
+    "histogram_bins": 30
+  },
+  "fem_inlet_audit": {
+    "inlet_boundary_id": 10,
+    "wall_boundary_id": 40,
+    "expected_velocity_mm_s": 10.0,
+    "velocity_tolerance_mm_s": 1.0e-8,
+    "coordinate_tolerance_mm": 1.0e-9
+  },
+  "star_inlet_audit": {
+    "expected_velocity_mm_s": 10.0,
+    "velocity_tolerance_mm_s": 1.0e-6
+  },
+  "interpolation": {
+    "method": "linear_tri_point_visualization",
+    "star_cell_to_point_for_visualization": true,
+    "minimum_common_valid_area_fraction_percent": 50.0
+  },
+  "decision_thresholds": {
+    "normalized_velocity_relative_l2_percent": 5.0,
+    "alpha_beta_relative_difference_percent": 2.0,
+    "flux_centroid_difference_mm": 0.25,
+    "secondary_ratio_difference_percentage_points": 1.0
+  },
+  "plot": {
+    "dpi": 180,
+    "cmap": "viridis",
+    "difference_cmap": "coolwarm",
+    "figsize": [10.0, 4.5]
+  },
+  "execution": {
+    "refuse_nonempty_output_directory": true
+  },
+  "output": {
+    "directory": "../output/inlet_upstream_profile_audit/re100"
+  }
+}

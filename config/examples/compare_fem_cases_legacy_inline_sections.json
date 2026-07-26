@@ -1,0 +1,104 @@
+{
+  "data_sources": {
+    "baseline": {
+      "label": "Baseline",
+      "path": "data/260629_solver/solution_000120.vtu",
+      "dt": 0.125,
+      "time": 15.0,
+      "velocity_array": "solution_velocity",
+      "data_association": "point",
+      "length_unit": "mm",
+      "velocity_unit": "mm/s",
+      "length_scale_to_mm": 1.0,
+      "velocity_scale_to_mm_s": 1.0
+    },
+    "case_a": {
+      "label": "Case A",
+      "path": "data/branch_duct_re100_dt003125/solution_000480.vtu",
+      "dt": 0.03125,
+      "time": 15.0,
+      "velocity_array": "solution_velocity",
+      "data_association": "point",
+      "length_unit": "mm",
+      "velocity_unit": "mm/s",
+      "length_scale_to_mm": 1.0,
+      "velocity_scale_to_mm_s": 1.0
+    },
+    "case_b": {
+      "label": "Case B",
+      "path": "data/branch_duct_re100_dt00125_vtu20/solution_001200.vtu",
+      "dt": 0.0125,
+      "time": 15.0,
+      "velocity_array": "solution_velocity",
+      "data_association": "point",
+      "length_unit": "mm",
+      "velocity_unit": "mm/s",
+      "length_scale_to_mm": 1.0,
+      "velocity_scale_to_mm_s": 1.0
+    }
+  },
+  "sections": {
+    "side_branch": {
+      "label": "Side branch section",
+      "center": [
+        10.0,
+        0.0,
+        15.0
+      ],
+      "normal": [
+        1.0,
+        0.0,
+        -1.0
+      ],
+      "width": 12.0,
+      "height": 10.0,
+      "grid_resolution": [
+        501,
+        401
+      ],
+      "flip_s": false,
+      "flip_t": false
+    }
+  },
+  "comparisons": [
+    {
+      "name": "caseA_vs_caseB",
+      "source_1": "case_a",
+      "source_2": "case_b",
+      "reference": "case_b",
+      "section": "side_branch"
+    },
+    {
+      "name": "baseline_vs_caseA",
+      "source_1": "baseline",
+      "source_2": "case_a",
+      "reference": "case_a",
+      "section": "side_branch"
+    },
+    {
+      "name": "baseline_vs_caseB",
+      "source_1": "baseline",
+      "source_2": "case_b",
+      "reference": "case_b",
+      "section": "side_branch"
+    }
+  ],
+  "interpolation": {
+    "method": "linear_tri",
+    "duplicate_point_tolerance": 1.0e-8,
+    "minimum_common_valid_fraction": 0.5
+  },
+  "metrics": {
+    "epsilon": 1.0e-12,
+    "u95_percentile": 95.0,
+    "compute_vector_components": true
+  },
+  "output": {
+    "directory": "output/fem_case_comparison",
+    "save_grid_csv": true,
+    "save_metrics_csv": true,
+    "save_png": true,
+    "save_vtp": false,
+    "dpi": 200
+  }
+}

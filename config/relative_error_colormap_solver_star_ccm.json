@@ -1,0 +1,75 @@
+{
+  "output_dir": "output/relative_error_colormap/solver_vs_star_ccm_Re100_v2",
+  "solver": {
+    "vtu_template": "data/260629_solver/solution_{time_index:06d}.vtu",
+    "velocity_name": "solution_velocity",
+    "coordinate_scale": 1.0,
+    "velocity_scale": 1.0,
+    "data_association": "point"
+  },
+  "star_ccm": {
+    "case_file": "data/260629star-ccm/duct_test.case",
+    "velocity_name": "Velocity",
+    "coordinate_scale": 1000.0,
+    "velocity_scale": 1000.0,
+    "display_time_index_offset": 1,
+    "data_association": "point",
+    "merge_points": false
+  },
+  "time_pairs": [
+    {
+      "label": 300,
+      "solver_vtu": "data/260629_solver/solution_000300.vtu",
+      "star_time_point": 299
+    }
+  ],
+  "error_visualization": {
+    "display_max_percent": 10.0,
+    "display_min_percent": 0.0,
+    "local_over_limit_color": "black",
+    "representative_display_min_percent": 0.0,
+    "representative_display_max_percent": 10.0,
+    "floor_contour_color": "black",
+    "floor_contour_width": 1.2,
+    "invalid_color": "white"
+  },
+  "plot": {
+    "title": "Velocity-distribution error comparison",
+    "cmap": "coolwarm",
+    "figsize": [
+      13.0,
+      6.0
+    ],
+    "dpi": 180,
+    "grid": true,
+    "s_label": "s [mm]",
+    "t_label": "t [mm]",
+    "show_section_info": true
+  },
+  "time_step_seconds": 0.125,
+  "zero_speed_tolerance": 1e-09,
+  "png_dir_name": "png",
+  "csv_dir_name": "csv",
+  "vtp_dir_name": "vtp",
+  "comparison": {
+    "method": "slice_interpolated",
+    "quantity": "speed",
+    "denominator": "local_star_speed_with_floor",
+    "reference_speed_source": "star",
+    "reference_speed_statistic": "percentile",
+    "reference_speed_percentile": 95.0,
+    "reference_speed_floor_fraction": 0.05,
+    "minimum_reference_speed": 1e-09,
+    "minimum_common_valid_fraction": 0.5
+  },
+  "section_library": "sections.json",
+  "section_set": "default_three_sections",
+  "execution": {
+    "fail_fast": true
+  },
+  "comparison_name": "fem_vs_star_re100",
+  "output": {
+    "save_vtp": true,
+    "grid_output_format": "none"
+  }
+}

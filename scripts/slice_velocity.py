@@ -1,10 +1,13 @@
 from pathlib import Path
+import argparse
 import json
 
 import numpy as np
 import pandas as pd
 import pyvista as pv
 import matplotlib.pyplot as plt
+
+from section_config import SectionConfigError, make_plane_basis as shared_make_plane_basis, resolve_sections_from_config
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 
@@ -42,26 +45,37 @@ FLIP_S_AXIS = bool(CONFIG.get("flip_s_axis", False))
 FLIP_T_AXIS = bool(CONFIG.get("flip_t_axis", False))
 SECTIONS_FILE = CONFIG_FILE
 PLOT_TITLE_SUFFIX = CONFIG.get("plot_title_suffix", "fem solver")
+ACTIVE_S_AXIS = None
+ACTIVE_T_AXIS = None
+
+
+def configure(config_file: Path):
+    global CONFIG_FILE, CONFIG, OUTPUT_DIR, VTU_FILE, VELOCITY_NAME
+    global COORDINATE_UNIT, VELOCITY_UNIT, GEOMETRY_FILE, FLIP_S_AXIS
+    global FLIP_T_AXIS, SECTIONS_FILE, PLOT_TITLE_SUFFIX
+    CONFIG_FILE = config_file.resolve()
+    CONFIG = load_config(CONFIG_FILE)
+    OUTPUT_DIR = resolve_config_path(CONFIG.get("output_dir", "output/slice_velocity"))
+    VTU_FILE = resolve_config_path(CONFIG.get("vtu_file"))
+    VELOCITY_NAME = CONFIG.get("velocity_name", "solution_velocity")
+    COORDINATE_UNIT = CONFIG.get("coordinate_unit", "mm")
+    VELOCITY_UNIT = CONFIG.get("velocity_unit", "mm/s")
+    GEOMETRY_FILE = CONFIG.get("geometry_file")
+    FLIP_S_AXIS = bool(CONFIG.get("flip_s_axis", False))
+    FLIP_T_AXIS = bool(CONFIG.get("flip_t_axis", False))
+    SECTIONS_FILE = CONFIG_FILE
+    PLOT_TITLE_SUFFIX = CONFIG.get("plot_title_suffix", "fem solver")
 
 
 def make_plane_basis(normal: np.ndarray):
-    normal = normal / np.linalg.norm(normal)
-
-    tmp = np.array([1.0, 0.0, 0.0])
-    if abs(np.dot(tmp, normal)) > 0.9:
-        tmp = np.array([0.0, 1.0, 0.0])
-
-    e1 = np.cross(normal, tmp)
-    e1 = e1 / np.linalg.norm(e1)
-
-    e2 = np.cross(normal, e1)
-    e2 = e2 / np.linalg.norm(e2)
-
-    if FLIP_S_AXIS:
-        e1 = -e1
-    if FLIP_T_AXIS:
-        e2 = -e2
-
+    if ACTIVE_S_AXIS is not None or ACTIVE_T_AXIS is not None:
+        _, e1, e2 = shared_make_plane_basis(
+            normal, s_axis=ACTIVE_S_AXIS, t_axis=ACTIVE_T_AXIS
+        )
+    else:
+        _, e1, e2 = shared_make_plane_basis(
+            normal, flip_s=FLIP_S_AXIS, flip_t=FLIP_T_AXIS
+        )
     return e1, e2
 
 
@@ -101,26 +115,10 @@ def make_arrow(start, direction, length):
 
 
 def load_section_specs():
-    sections = CONFIG.get("sections")
-
-    if not sections:
-        raise ValueError(f"{SECTIONS_FILE} に sections が定義されていません。")
-
-    required_keys = {"center", "normal"}
-    for index, section in enumerate(sections):
-        missing_keys = required_keys - set(section)
-        if missing_keys:
-            raise ValueError(
-                f"{SECTIONS_FILE}: sections[{index}] に {sorted(missing_keys)} がありません。"
-            )
-        for size_key in ("width", "height"):
-            if size_key in section and section[size_key] is not None and section[size_key] <= 0:
-                raise ValueError(
-                    f"{SECTIONS_FILE}: sections[{index}].{size_key} は正の値にしてください。"
-                )
-
-    return sections
-
+    try:
+        return resolve_sections_from_config(CONFIG, config_path=CONFIG_FILE)
+    except SectionConfigError as exc:
+        raise ValueError(f"Invalid section configuration in {CONFIG_FILE}: {exc}") from exc
 
 
 def collect_surface_edges(polydata, max_edges=9000):
@@ -720,7 +718,10 @@ def export_section_overview(reference_geometry, geometry_label, section, section
     export_interactive_overview(reference_geometry, section, section_name, origin, normal, width, height)
 
 
-def export_section(mesh, section_name, center, normal, width=None, height=None):
+def export_section(
+    mesh, section_name, section_label, center, normal, width=None, height=None,
+    grid_resolution=None, input_file=None,
+):
     origin = np.asarray(center, dtype=float)
     normal = np.asarray(normal, dtype=float)
 
@@ -788,13 +789,41 @@ def export_section(mesh, section_name, center, normal, width=None, height=None):
             "uz": velocity[:, 2],
             "speed": speed,
             "normal_velocity": normal_velocity,
+            "section_name": section_name,
+            "section_label": section_label,
+            "center_x": origin[0],
+            "center_y": origin[1],
+            "center_z": origin[2],
+            "normal_x": normal[0],
+            "normal_y": normal[1],
+            "normal_z": normal[2],
         }
     )
 
-    csv_path = OUTPUT_DIR / f"{section_name}.csv"
-    png_path = OUTPUT_DIR / f"{section_name}.png"
+    csv_path = OUTPUT_DIR / "velocity.csv"
+    png_path = OUTPUT_DIR / "velocity.png"
+    metadata_path = OUTPUT_DIR / "metadata.json"
 
     df.to_csv(csv_path, index=False)
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "section_name": section_name,
+                "section_label": section_label,
+                "center": origin.tolist(),
+                "normalized_normal": normal.tolist(),
+                "s_axis": e1.tolist(),
+                "t_axis": e2.tolist(),
+                "width": width,
+                "height": height,
+                "grid_resolution": list(grid_resolution) if grid_resolution else None,
+                "input_file": str(input_file) if input_file else None,
+                "velocity_array": VELOCITY_NAME,
+            },
+            indent=2,
+        ) + "\n",
+        encoding="utf-8",
+    )
 
     fig, ax = plt.subplots(figsize=(7.5, 6))
     speed_levels = make_speed_contour_levels(speed)
@@ -803,7 +832,7 @@ def export_section(mesh, section_name, center, normal, width=None, height=None):
     ax.set_xlabel(f"s: + direction / plot right = {format_vector(e1)}")
     ax.set_ylabel(f"t: + direction / plot up = {format_vector(e2)}")
     ax.axis("equal")
-    ax.set_title(f"{section_name}\n{PLOT_TITLE_SUFFIX}")
+    ax.set_title(f"{section_label} ({section_name})\n{PLOT_TITLE_SUFFIX}")
     arrow_origin = (-0.18, -0.16)
     s_arrow_end = (-0.06, -0.16)
     t_arrow_end = (-0.18, -0.04)
@@ -849,47 +878,90 @@ def export_section(mesh, section_name, center, normal, width=None, height=None):
 
     print(f"Saved: {csv_path}")
     print(f"Saved: {png_path}")
+    print(f"Saved: {metadata_path}")
 
     return section, origin, normal
 
 
 def main():
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    global OUTPUT_DIR, ACTIVE_S_AXIS, ACTIVE_T_AXIS
+    parser = argparse.ArgumentParser(description="Export FEM velocity on configured sections.")
+    parser.add_argument("--config", type=Path, default=CONFIG_FILE)
+    args = parser.parse_args()
+    config_path = args.config if args.config.is_absolute() else ROOT / args.config
+    configure(config_path)
+    output_root = OUTPUT_DIR
+    output_root.mkdir(parents=True, exist_ok=True)
+
+    section_specs = load_section_specs()
+    print(f"Configuration: {CONFIG_FILE}")
+    print(f"Section library: {CONFIG.get('section_library', '(inline/legacy)')}")
+    print(f"Resolved sections: {len(section_specs)}")
+    print(f"Section processing order: {[section['name'] for section in section_specs]}")
+    print(f"Input data: {VTU_FILE}")
+    print(f"Output root: {output_root}")
 
     mesh, target_file = load_latest_mesh()
     reference_geometry, geometry_label = load_reference_geometry(mesh)
-
-    # まずはメッシュ全体の範囲を表示
     bounds = mesh.bounds
-    print()
-    print("Mesh bounds:")
-    print(f"x: {bounds[0]} to {bounds[1]}")
-    print(f"y: {bounds[2]} to {bounds[3]}")
-    print(f"z: {bounds[4]} to {bounds[5]}")
+    print(f"Mesh bounds: x={bounds[0]}..{bounds[1]}, y={bounds[2]}..{bounds[3]}, z={bounds[4]}..{bounds[5]}")
 
-    section_specs = load_section_specs()
-    print(f"Section config: {SECTIONS_FILE}")
-
+    fail_fast = bool(CONFIG.get("execution", {}).get("fail_fast", True))
+    successes = []
+    failures = []
     for sec in section_specs:
-        section_name = section_name_from_center(sec["center"])
-        section, origin, normal = export_section(
-            mesh=mesh,
-            section_name=section_name,
-            center=sec["center"],
-            normal=sec["normal"],
-            width=sec.get("width"),
-            height=sec.get("height"),
-        )
-        export_section_overview(
-            reference_geometry=reference_geometry,
-            geometry_label=geometry_label,
-            section=section,
-            section_name=section_name,
-            origin=origin,
-            normal=normal,
-            width=sec.get("width"),
-            height=sec.get("height"),
-        )
+        section_name = sec["name"]
+        section_label = sec["label"]
+        OUTPUT_DIR = output_root / section_name
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        ACTIVE_S_AXIS = np.asarray(sec["s_axis"], dtype=float)
+        ACTIVE_T_AXIS = np.asarray(sec["t_axis"], dtype=float)
+        print(f"Processing section: {section_name} ({section_label})")
+        print(f"  center: {sec['center'].tolist()}")
+        print(f"  normalized normal: {sec['normalized_normal'].tolist()}")
+        print(f"  s_axis: {ACTIVE_S_AXIS.tolist()}")
+        print(f"  t_axis: {ACTIVE_T_AXIS.tolist()}")
+        print(f"  width/height: {sec['width']} / {sec['height']}")
+        print(f"  grid_resolution: {list(sec['grid_resolution'])}")
+        print(f"  output: {OUTPUT_DIR}")
+        try:
+            sliced, origin, normal = export_section(
+                mesh=mesh,
+                section_name=section_name,
+                section_label=section_label,
+                center=sec["center"],
+                normal=sec["normalized_normal"],
+                width=sec["width"],
+                height=sec["height"],
+                grid_resolution=sec["grid_resolution"],
+                input_file=target_file,
+            )
+            export_section_overview(
+                reference_geometry=reference_geometry,
+                geometry_label=geometry_label,
+                section=sliced,
+                section_name=section_name,
+                origin=origin,
+                normal=normal,
+                width=sec["width"],
+                height=sec["height"],
+            )
+            successes.append({"section_name": section_name, "section_label": section_label, "status": "success"})
+        except Exception as exc:
+            failures.append({"section_name": section_name, "section_label": section_label, "error": f"{type(exc).__name__}: {exc}"})
+            print(f"FAILED {section_name}: {type(exc).__name__}: {exc}")
+            if fail_fast:
+                raise
+
+    OUTPUT_DIR = output_root
+    ACTIVE_S_AXIS = None
+    ACTIVE_T_AXIS = None
+    summary_path = output_root / "section_summary.csv"
+    pd.DataFrame(successes + failures).to_csv(summary_path, index=False)
+    print(f"Successful sections: {len(successes)}")
+    print(f"Failed sections: {len(failures)}")
+    print(f"Output directory: {output_root}")
+    print(f"Summary CSV: {summary_path}")
 
 
 if __name__ == "__main__":

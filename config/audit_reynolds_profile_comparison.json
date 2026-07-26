@@ -1,0 +1,136 @@
+{
+  "cases": {
+    "re10": {
+      "label": "Re = 10",
+      "nominal_reynolds_number": 10.0,
+      "fem": {
+        "path": "../data/260625_r1_solver/solution_000300.vtu",
+        "data_directory": "../data/260625_r1_solver",
+        "result_log": "../data/260625_r1_solver/result.txt",
+        "timestep_index": 300,
+        "physical_time": 37.5,
+        "dt": 0.125,
+        "velocity_array": "solution_velocity",
+        "data_association": "point",
+        "length_unit": "mm",
+        "velocity_unit": "mm/s",
+        "length_scale_to_mm": 1.0,
+        "velocity_scale_to_mm_s": 1.0,
+        "boundary_mesh_path": "../data/mesh/branch_duct.msh"
+      },
+      "star": {
+        "path": "../data/260626star-ccm/duct_test.case",
+        "time_index": 299,
+        "timestep_index": 300,
+        "physical_time": 37.5,
+        "dt": 0.125,
+        "velocity_array": "Velocity",
+        "data_association": "cell",
+        "volume_part_name": "領域",
+        "length_unit": "m",
+        "velocity_unit": "m/s",
+        "length_scale_to_mm": 1000.0,
+        "velocity_scale_to_mm_s": 1000.0
+      },
+      "conditions": {
+        "density_kg_m3": null,
+        "dynamic_viscosity_pa_s": null,
+        "nominal_inlet_velocity_mm_s": 1.0,
+        "characteristic_length_mm": 10.0,
+        "reynolds_definition": "rho * U * D / mu"
+      }
+    },
+    "re100": {
+      "label": "Re = 100",
+      "nominal_reynolds_number": 100.0,
+      "fem": {
+        "path": "../data/260629_solver/solution_000300.vtu",
+        "data_directory": "../data/260629_solver",
+        "result_log": "../data/260629_solver/result.txt",
+        "timestep_index": 300,
+        "physical_time": 37.5,
+        "dt": 0.125,
+        "velocity_array": "solution_velocity",
+        "data_association": "point",
+        "length_unit": "mm",
+        "velocity_unit": "mm/s",
+        "length_scale_to_mm": 1.0,
+        "velocity_scale_to_mm_s": 1.0,
+        "boundary_mesh_path": "../data/mesh/branch_duct.msh"
+      },
+      "star": {
+        "path": "../data/260629star-ccm/duct_test.case",
+        "time_index": 299,
+        "timestep_index": 300,
+        "physical_time": 37.5,
+        "dt": 0.125,
+        "velocity_array": "Velocity",
+        "data_association": "cell",
+        "volume_part_name": "領域",
+        "length_unit": "m",
+        "velocity_unit": "m/s",
+        "length_scale_to_mm": 1000.0,
+        "velocity_scale_to_mm_s": 1000.0
+      },
+      "conditions": {
+        "density_kg_m3": null,
+        "dynamic_viscosity_pa_s": null,
+        "nominal_inlet_velocity_mm_s": 10.0,
+        "characteristic_length_mm": 10.0,
+        "reynolds_definition": "rho * U * D / mu"
+      }
+    }
+  },
+  "base_configs": {
+    "boundary_audit": "audit_boundary_flow.json",
+    "profile_audit": "audit_inlet_upstream_profile.json",
+    "development_audit": "audit_inlet_development_profiles.json"
+  },
+  "section_library": "sections.json",
+  "section_series": {
+    "name_prefix": "inlet_development",
+    "template_section": "upstream_z30",
+    "axis": "z",
+    "positions_mm": [49.5, 49.0, 48.0, 45.0, 40.0, 35.0, 30.0],
+    "center_x_mm": 0.0,
+    "center_y_mm": 0.0,
+    "normal": [0.0, 0.0, 1.0],
+    "flow_direction_normal": [0.0, 0.0, -1.0],
+    "inlet_position_mm": 50.0,
+    "diameter_mm": 10.0,
+    "valid_internal_position_range_mm": [30.0, 49.999]
+  },
+  "position_sensitivity": {
+    "enabled": true,
+    "base_positions_mm": [49.5, 49.0, 48.0],
+    "offsets_mm": [-0.05, 0.0, 0.05],
+    "flow_change_warning_percent": 1.0,
+    "beta_alpha_change_warning_percent": 2.0,
+    "l2_change_warning_percentage_points": 2.0
+  },
+  "fully_developed_references": {
+    "beta": 1.3333333333333333,
+    "alpha": 2.0,
+    "centerline_to_mean_velocity_ratio": 2.0
+  },
+  "decision_thresholds": {
+    "upstream_flow_difference_percent": 1.0,
+    "branch_fraction_difference_percentage_points": 1.0,
+    "normalized_profile_l2_percent": 5.0,
+    "beta_relative_difference_percent": 3.0,
+    "alpha_relative_difference_percent": 5.0,
+    "position_sensitivity_flow_percent": 1.0,
+    "position_sensitivity_beta_alpha_percent": 2.0,
+    "conservation_residual_percent": 1.0,
+    "amplification_denominator_epsilon": 1.0e-8
+  },
+  "steady_state": {
+    "last_timestep_indices": [298, 299, 300],
+    "relative_l2_threshold_percent": 0.1
+  },
+  "output": {
+    "directory": "../output/reynolds_profile_comparison/re10_vs_re100",
+    "dpi": 180,
+    "refuse_nonempty_output_directory": true
+  }
+}

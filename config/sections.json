@@ -1,0 +1,74 @@
+{
+  "sections": {
+    "straight_z10": {
+      "label": "Straight branch z = 10 mm",
+      "center": [
+        0.0,
+        0.0,
+        10.0
+      ],
+      "normal": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "width": 12.0,
+      "height": 10.0,
+      "grid_resolution": [
+        501,
+        401
+      ],
+      "flip_s": false,
+      "flip_t": false
+    },
+    "upstream_z30": {
+      "label": "Upstream z = 30 mm",
+      "center": [
+        0.0,
+        0.0,
+        30.0
+      ],
+      "normal": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "width": 12.0,
+      "height": 10.0,
+      "grid_resolution": [
+        501,
+        401
+      ],
+      "flip_s": false,
+      "flip_t": false
+    },
+    "side_branch": {
+      "label": "Side branch",
+      "center": [
+        10.0,
+        0.0,
+        15.0
+      ],
+      "normal": [
+        1.0,
+        0.0,
+        -1.0
+      ],
+      "width": 12.0,
+      "height": 10.0,
+      "grid_resolution": [
+        501,
+        401
+      ],
+      "flip_s": false,
+      "flip_t": false
+    }
+  },
+  "section_sets": {
+    "default_three_sections": [
+      "straight_z10",
+      "upstream_z30",
+      "side_branch"
+    ]
+  }
+}
